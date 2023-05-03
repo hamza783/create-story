@@ -11,7 +11,7 @@ const Page = styled.div`
   border: 1px solid black;
   width: 600px;
   height: 800px;
-  font-size: 24px;
+  font-size: 22px;
   font-family: "Comic Sans MS", "Comic Sans", cursive;
   margin: 32px;
   padding: 32px;
@@ -38,14 +38,23 @@ const PrintBook = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '75%', justifyContent: 'center', alignItems: 'center' }}>
       <Page style={{ justifyContent: 'center', backgroundImage: `url(${storyCover})`, backgroundSize: 'cover' }}>
-        <h1 style={{ color: 'white' }}>{storyTitle}</h1>
+        <h1 style={{ color: 'white', backgroundColor: 'black' }}>{storyTitle}</h1>
       </Page>
       {chapters.map((chapter) => {
         return (
-          <Page>
-            <h3>{chapter?.title}</h3>
-            <p>{chapter?.content}</p>
-          </Page>
+          <>
+            <Page>
+              <h3>{chapter?.title}</h3>
+              <p>{chapter?.content}</p>
+            </Page>
+            {chapter?.image && (
+              <Page>
+                <div style={{ display: 'flex', width: '500px', height: '800px', alignItems: 'center' }}>
+                  <img style={{ width: '100%', height: '80%', display: 'block' }} className="result-image" src={chapter?.image} alt="generated-image" />
+                </div>
+              </Page>
+            )}
+          </>
         )
       })}
     </div>

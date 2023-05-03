@@ -6,7 +6,7 @@ import useChatGpt from '../../hooks/useChatGpt'
 import StoryContext from '../../contexts/StoryContext/StoryContex'
 
 const GenerateTitle = () => {
-  const { storyTitle, setStoryTitle, storySummary, setStorySummary } = useContext(StoryContext)
+  const { storyTitle, setStoryTitle, storySummary, setMessages, setStorySummary } = useContext(StoryContext)
   const { loading, getChatGptResponse } = useChatGpt()
 
   const [storySummaryValue, setStorySummaryValue] = useState('')
@@ -16,7 +16,15 @@ const GenerateTitle = () => {
   const generateTitle = async () => {
     const summary = storySummary? `Here is what the book is about: ${storySummary}.` : ''
     const title = await getChatGptResponse(`Generate a title of a children's book. ${summary}`)
-    setStoryTitleValue(title)
+    const defaultMessage = {
+      role: 'system',
+      content: `You are an author of children's short stories that writes entertaining and easy to understand stories.
+       Your stories usually have a happy ending with a lesson.
+       The name of the story you are currently working on is ${title.trim()}. ${summary}.
+       Your job is to write 3 chapters of this story.`
+    }
+    setMessages([defaultMessage])
+    setStoryTitleValue(title.trim())
   }
 
   return (

@@ -5,27 +5,35 @@ import useChatGpt from '../../hooks/useChatGpt'
 import StoryContext from '../../contexts/StoryContext/StoryContex';
 
 const GenerateCover = () => {
-  const { storyTitle, storyCover, setStoryCover } = useContext(StoryContext)
-  const { loading, getChatGptResponse, generateImage } = useChatGpt()
+  const { storyTitle, storySummary, storyCover, setStoryCover } = useContext(StoryContext)
+  const { getChatGptResponse, generateImage } = useChatGpt()
+  const [ loadingDescription, setLoadingDescription ] = useState(false)
+  const [ loadingImage, setLoadingImage ] = useState(false)
 
   const [value, setValue] = useState('')
   const [url, setUrl] = useState(storyCover)
 
   const generateDescription = async () => {
+    setLoadingDescription(true)
     setValue('')
     const description = await getChatGptResponse(
-      `Generate a detailed description of a front cover of a short story with the title ${storyTitle}. Keep the description less than 200 words.`,
+      `Generate a detailed description of a picture from a scene from a short story with the title ${storyTitle}.
+      Here is the summary of that story: ${storySummary}.
+      Keep the description less than 100 words.`,
       300
     )
-    setValue(description)
+    setLoadingDescription(false)
+    setValue(description.trim())
   }
 
   const generateImageUsingChatGpt = async (prompt) => {
+    setLoadingImage(true)
     setUrl('')
     const customPrompt = prompt + 'Do not include the title in the image'
     const url = await generateImage(customPrompt)
     setUrl(url)
     setStoryCover(url)
+    setLoadingImage(false)
   }
 
   return (
@@ -40,14 +48,13 @@ const GenerateCover = () => {
 
         {/* user input prompts for image description */}
         <textarea
-          placeholderText='Description of your cover'
           value={value}
           onChange={(e) => setValue(e?.target?.value)}
           style={{ padding: '10px', width: '80%', height: '100px' }}
         />
         <div style={{ display: 'flex' }}>
           <Button
-            isLoading={loading}
+            isLoading={loadingDescription}
             icon='⚡️'
             value='Generate Description'
             backgroundColor='#208C49'
@@ -56,7 +63,7 @@ const GenerateCover = () => {
             style={{ margin: '8px' }}
           />
           <Button
-            isLoading={loading}
+            isLoading={loadingImage}
             disabled={!value}
             icon='⚡️'
             value='Generate Image'
@@ -68,7 +75,6 @@ const GenerateCover = () => {
         </div>
 
         {/* show generated image */}
-        {loading && <>Loading.....</>}
         {url && (
           <>
             <h2>{`Here is the generated picture. If you don't like it you can generate another one.`}</h2>

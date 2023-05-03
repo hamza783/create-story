@@ -9,28 +9,26 @@ import { useEffect } from 'react'
 const Chapters = () => {
   const {
     storyTitle,
-    storySumamry,
     chapters,
     setChapters,
     currentChapterNumber,
     setCurrentChapterNumber,
-    messages
+    messages,
+    setMessages
   } = useContext(StoryContext)
   
-  const { loading, getChatGptResponse, getChatGptResponseChat, generateImage } = useChatGpt()
-
-  const summary = storySumamry ? `This is what the story is about: ${storySumamry}` : ''
-  const defaultMessage = {
-    role: 'system',
-    content: `You are an author of children's short stories that writes entertaining and easy to understand stories.
-     Your stories usually have a happy ending with a lesson.
-     The name of the story you are currently working on is ${storyTitle}. ${summary}.
-     Your job is to write 3 chapters of this story.`
-  }
+  const { loading, error, getChatGptResponseChat, generateImage } = useChatGpt()
 
   const currentChapter = chapters[currentChapterNumber]
     ? chapters[currentChapterNumber]
     : { title: '', content: '', image: null}
+
+  // current step
+  // 0: generate title
+  // 1: generate content
+  // 2: generate image description
+  // 3: generate image
+  const [step, setStep] = useState(0)
 
   // chapter title
   const [newChapterTitleValue, setNewChapterTitleValue] = useState(currentChapter?.title)
@@ -45,54 +43,97 @@ const Chapters = () => {
   const [newChapterImageUrlValue, setNewChapterImageUrlValue] = useState(currentChapter?.image)
   const [newChapterImageUrl, setNewChapterImageUrl] = useState(currentChapter?.image)
 
-  const [chapterMessages, setChapterMessages] = useState([ ...messages, defaultMessage])
-  const [currentMessage, setCurrentMessage] = useState([])  
+  // to keep track of current chapter messages
+  const [currentMessage, setCurrentMessage] = useState()  
+
+  // loading states
+  const [ chapterTitleLoading, setChapterTitleLoading ] = useState(false)
+  const [ chapterDescriptionLoading, setChapterDescriptionLoading ] = useState(false)
+  const [ chapterImageDescriptionLoading, setImageDescriptionLoading ] = useState(false)
+  const [ chapterImageLoading, setChapterImageLoading ] = useState(false)
 
   const generateChapterTitle = async () => {
+    setChapterTitleLoading(true)
     const newMessage = {
       role: 'user',
       content: `generate the title of chapter ${currentChapterNumber + 1} out of 3 chapters for your short story called ${storyTitle}`
     }
-    const returnedMessages = await getChatGptResponseChat([ ...chapterMessages, newMessage])
+    const returnedMessages = await getChatGptResponseChat([ ...messages, newMessage])
     const title = returnedMessages[returnedMessages.length - 1]?.content || ''
     setNewChapterTitleValue(title)
     setCurrentMessage(returnedMessages)
+    setChapterTitleLoading(false)
   }
 
   const onSubmitChapterTitle = () => {
+    // manully add this message to chapter messages in case user wrote down the summary without using chat gpt.
+    const finalTitleMessage = [
+      {
+        role: 'user',
+        content: `generate the title of chapter ${currentChapterNumber + 1} out of 3 chapters for your short story called ${storyTitle}`
+      },
+      {
+        role: 'assistant',
+        content: newChapterTitleValue
+      }
+    ]
     setNewChapterTitle(newChapterTitleValue)
-    setChapterMessages(currentMessage)
+    setMessages([ ...messages, ...finalTitleMessage ])
+    setStep(1)
   }
 
   const generateChapterContent = async () => {
+    setChapterDescriptionLoading(true)
     const newMessage = {
       role: 'user',
       content: `write chapter ${currentChapterNumber + 1} for your short story called ${storyTitle}.
         the title of the chapter is ${newChapterTitle}. The chapter should be less than 150 words.`
     }
-    const returnedMessages = await getChatGptResponseChat([ ...chapterMessages, newMessage])
+    const returnedMessages = await getChatGptResponseChat([ ...messages, newMessage])
     const content = returnedMessages[returnedMessages.length - 1]?.content || ''
     setNewChapterContentValue(content)
     setCurrentMessage(returnedMessages)
+    setChapterDescriptionLoading(false)
   }
 
   const onSubmitChapterContent = () => {
+    // manully add this message to chapter messages in case user wrote down the summary without using chat gpt.
+    const finalContentMessage = [
+      {
+        role: 'user',
+        content: `write chapter ${currentChapterNumber + 1} for your short story called ${storyTitle}.
+          the title of the chapter is ${newChapterTitle}. The chapter should be less than 150 words.`
+      },
+      {
+        role: 'assistant',
+        content: newChapterContentValue
+      }
+    ]
     setNewChapterContent(newChapterContentValue)
-    setChapterMessages(currentMessage)
+    setMessages([ ...messages, ...finalContentMessage ])
+    setStep(2)
   }
 
   const generateChapterPictureDesctiption = async () => {
-    const description = await getChatGptResponse(
-      `Generate a detailed description of this scene of a short story with the title ${storyTitle}: ${newChapterContent}`,
-      300
-    )
+    setImageDescriptionLoading(true)
+    const newMessage = {
+      role: 'user',
+      content: `Generate a detailed description of a picture from any 1 scene from this chapter. Limit the description to less than 100 words`
+    }
+    const returnedMessages = await getChatGptResponseChat([ ...messages, newMessage])
+    const description = returnedMessages[returnedMessages.length - 1]?.content || ''
+    setCurrentMessage(returnedMessages)
     setNewChapterImageDescValue(description)
+    setImageDescriptionLoading(false)
   }
 
   const generateChapterPicture = async () => {
+    setChapterImageLoading(true)
     setNewChapterImageUrlValue('')
     const url = await generateImage(newChapterImageDescValue)
     setNewChapterImageUrlValue(url)
+    setChapterImageLoading(false)
+    setStep(3)
   }
 
   const saveChapter = () => {
@@ -106,10 +147,19 @@ const Chapters = () => {
   }
 
   useEffect(() => {
+    setChapterTitleLoading(false)
+    setChapterDescriptionLoading(false)
+    setImageDescriptionLoading(false)
+    setChapterImageLoading(false)
+  }, [error])
+
+  useEffect(() => {
     const currentChapterTemp = chapters[currentChapterNumber]
       ? chapters[currentChapterNumber]
       : { title: '', content: '', image: null}
     
+    // reset step
+    setStep(0)
     // reset chapter title
     setNewChapterTitleValue(currentChapterTemp?.title)
     setNewChapterTitle(currentChapterTemp?.title)
@@ -140,7 +190,7 @@ const Chapters = () => {
   }
 
   return (
-    <div style={{ display: 'flex', height: '75%', justifyContent: 'center', alignItems: 'center' }}>
+    <div style={{ display: 'flex', border: '1px solid', justifyContent: 'center', alignItems: 'center' }}>
       <div style={{ display: 'flex',  flexDirection: 'column',  width: '100%', justifyContent: 'center', alignItems: 'center' }}>
         <h1>Chapter {currentChapterNumber + 1}</h1>
         <h4>Let's work on the chapter {currentChapterNumber + 1} of "{storyTitle}"</h4>
@@ -156,7 +206,7 @@ const Chapters = () => {
             style={{ width: '70%' }}
           />
           <Button
-            isLoading={loading}
+            isLoading={chapterTitleLoading}
             icon='⚡️'
             value='Generate Chapter Title'
             backgroundColor='#208C49'
@@ -167,7 +217,7 @@ const Chapters = () => {
         </div>
 
         {/* chapter content */}
-        {newChapterTitle && (
+        {step > 0 && (
           <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
             <PromptInput
               placeholderText={`Write chapter ${currentChapterNumber + 1}`}
@@ -179,7 +229,7 @@ const Chapters = () => {
               style={{ width: '70%', height: '175px', marginBottom: '4px' }}
             />
             <Button
-              isLoading={loading}
+              isLoading={chapterDescriptionLoading}
               icon='⚡️'
               value='Generate Chapter'
               backgroundColor='#208C49'
@@ -191,18 +241,19 @@ const Chapters = () => {
         )}
 
         {/* chapter image description */}
-        {newChapterContent && (
+        {step > 1 && (
           <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
             <PromptInput
               placeholderText='Image for this chapter'
               value={newChapterImageDescValue}
+              isTextArea
               setValue={setNewChapterImageDescValue}
               onSubmit={() => {generateChapterPicture()}}
               onCancel={() => {setNewChapterImageDescValue('')}}
-              style={{ width: '70%' }}
+              style={{ width: '70%', height: '175px', marginBottom: '4px' }}
             />
             <Button
-              isLoading={loading}
+              isLoading={chapterImageDescriptionLoading}
               icon='⚡️'
               value='Generate Picture Desctiption'
               backgroundColor='#208C49'
@@ -212,12 +263,13 @@ const Chapters = () => {
             />
           </div>
         )}
-
-        {newChapterImageUrlValue && (
+        {chapterImageLoading && <>Loading.....</>}
+        {step > 2 && newChapterImageUrlValue && (
           <>
             <h2>{`Here is the generated picture. If you don't like it you can generate another one or skip picture for this chapter.`}</h2>
             <img className="result-image" src={newChapterImageUrlValue} alt="generated-image" />
             <Button style={{ margin: '16px' }} value='Add to chapter' onClick={() => setNewChapterImageUrl(newChapterImageUrlValue)} />
+            {newChapterImageUrl && <p style={{ color: 'green' }}>Image Added!</p>}
           </>
         )}
 
@@ -225,12 +277,16 @@ const Chapters = () => {
           <Button
             isLoading={loading}
             icon='⚡️'
-            value='Save chapter content'
+            value={`Save chapter content ${newChapterImageUrlValue ? 'with' : 'without'} image`}
             backgroundColor='#208C49'
             backgroundColorHover='#176535'
             onClick={() => saveChapter()}
             style={{ margin: '8px' }}
           />
+        )}
+
+        {error && (
+          <p style={{ color: 'red' }}>Ops... something went wrong. Please try again after few seconds.</p>
         )}
       </div>
     </div>

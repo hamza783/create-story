@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Configuration, OpenAIApi } from "openai"
+import SampleImage from '../assets/sample-cover-image.png'
 
 const configuration = new Configuration({
   // organization: "org-fsGeyrWfm2AXuHG873bsxY1D",
@@ -11,7 +12,7 @@ const useChatGpt = () => {
   const [error, setError] = useState('')
   const openai = new OpenAIApi(configuration)
 
-  const getChatGptResponse = async (newPrompt, maxToken = 40) => {
+  const getChatGptResponse = async (newPrompt, maxToken = 100) => {
     if(!newPrompt) return
 
     try {
@@ -53,7 +54,7 @@ const useChatGpt = () => {
 
   const generateImage = async (prompt, mock = false) => {
     if (mock) {
-      return 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-fsGeyrWfm2AXuHG873bsxY1D/user-fXBjzzAYXs4NqKvytsBgcgrG/img-EVDaoojoGm90LHqg2DGQLwKg.png?st=2023-04-20T21%3A53%3A28Z&se=2023-04-20T23%3A53%3A28Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-04-20T16%3A37%3A35Z&ske=2023-04-21T16%3A37%3A35Z&sks=b&skv=2021-08-06&sig=fo9dqcmtggHsFbl8t6nVH0W0YtPe0eokBZvsT42FdWU%3D'
+      return SampleImage
     }
     try {
       setLoading(true)
